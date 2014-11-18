@@ -8,9 +8,7 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.*;
-import io.netty.handler.codec.http.websocketx.WebSocketFrame;
-import io.netty.handler.codec.http.websocketx.WebSocketServerHandshaker;
-import io.netty.handler.codec.http.websocketx.WebSocketServerHandshakerFactory;
+import io.netty.handler.codec.http.websocketx.*;
 import io.netty.util.CharsetUtil;
 
 import static io.netty.handler.codec.http.HttpHeaders.Names.*;
@@ -19,13 +17,41 @@ import static io.netty.handler.codec.http.HttpVersion.*;
 import static io.netty.handler.codec.http.HttpMethod.*;
 
 public class WebSocketHandler extends SimpleChannelInboundHandler<Object> {
+
+    private WebSocketServerHandshaker handshaker;
+
     @Override
     protected void messageReceived(ChannelHandlerContext ctx, Object msg) {
         if (msg instanceof FullHttpRequest) {
             handleHttpRequest(ctx, (FullHttpRequest) msg);
         } else if (msg instanceof WebSocketFrame) {
-            //handleWebSocketFrame((WebSocketFrame) msg);
+            handleWebSocketFrame(ctx, (WebSocketFrame) msg);
         }
+    }
+
+    @Override
+    public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
+        ctx.flush();
+    }
+
+    private void handleWebSocketFrame(ChannelHandlerContext ctx, WebSocketFrame frame) {
+        if (frame instanceof CloseWebSocketFrame) {
+            handshaker.close(ctx.channel(), (CloseWebSocketFrame)frame.retain());
+            return;
+        }
+
+        if (frame instanceof PingWebSocketFrame) {
+            ctx.channel().write(new PongWebSocketFrame(frame.content().retain()));
+            return;
+        }
+
+        if (!(frame instanceof TextWebSocketFrame)) {
+            throw new UnsupportedOperationException(String.format("%s frame types not supported", frame.getClass()
+                    .getName()));
+        }
+
+        String request = ((TextWebSocketFrame)frame).text();
+        ctx.channel().write(new TextWebSocketFrame("Response from server: " + request));
     }
 
     private void handleHttpRequest(ChannelHandlerContext ctx, FullHttpRequest request) {
@@ -46,7 +72,7 @@ public class WebSocketHandler extends SimpleChannelInboundHandler<Object> {
         }
 
         WebSocketServerHandshakerFactory factory = new WebSocketServerHandshakerFactory(getWebSocketLocation(request), null, false);
-        WebSocketServerHandshaker handshaker = factory.newHandshaker(request);
+        handshaker = factory.newHandshaker(request);
         if (handshaker == null) {
             WebSocketServerHandshakerFactory.sendUnsupportedWebSocketVersionResponse(ctx.channel());
             return;
