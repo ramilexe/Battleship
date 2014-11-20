@@ -1,6 +1,12 @@
 package com.github.ramilexe;
 
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.ramilexe.app.Application;
+import com.github.ramilexe.app.Player;
+import com.github.ramilexe.protocol.LoginCredential;
+import com.github.ramilexe.protocol.Message;
+import com.github.ramilexe.protocol.MessageType;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
@@ -10,6 +16,8 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.*;
 import io.netty.handler.codec.http.websocketx.*;
 import io.netty.util.CharsetUtil;
+
+import java.io.IOException;
 
 import static io.netty.handler.codec.http.HttpHeaders.Names.*;
 import static io.netty.handler.codec.http.HttpResponseStatus.*;
@@ -34,6 +42,11 @@ public class WebSocketHandler extends SimpleChannelInboundHandler<Object> {
         ctx.flush();
     }
 
+    @Override
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        //ctx.channel().id()
+    }
+
     private void handleWebSocketFrame(ChannelHandlerContext ctx, WebSocketFrame frame) {
         if (frame instanceof CloseWebSocketFrame) {
             handshaker.close(ctx.channel(), (CloseWebSocketFrame)frame.retain());
@@ -51,7 +64,31 @@ public class WebSocketHandler extends SimpleChannelInboundHandler<Object> {
         }
 
         String request = ((TextWebSocketFrame)frame).text();
-        ctx.channel().write(new TextWebSocketFrame("Response from server: " + request));
+
+        ObjectMapper mapper = new ObjectMapper();
+        Message m;
+
+        try {
+            m = mapper.readValue(request, Message.class);
+            //Authorizing
+            if (m.type == MessageType.LOGIN) {
+                //extract login
+                LoginCredential l = mapper.convertValue(m.payload, LoginCredential.class);
+                //create new player
+                Player player = new Player(l.login, ctx.channel());
+                //add to list
+                Application.getInstance().addPlayer(player);
+                //answer
+                ctx.channel().writeAndFlush(Message.messageToFrame(MessageType.LOGIN_SUCCESS, player));
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            //close channel
+            ctx.channel().close();
+        }
+
+        //ctx.channel().write(new TextWebSocketFrame("Response from server: " + request));
     }
 
     private void handleHttpRequest(ChannelHandlerContext ctx, FullHttpRequest request) {

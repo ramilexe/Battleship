@@ -4,15 +4,36 @@
     <meta charset="utf-8">
     <title>Web Socket Example</title>
     <link rel="stylesheet" href="css/socket.css">
-    <script src="js/socket.js"></script>
+    <script src="js/battleship.js"></script>
+    <script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>
 </head>
 <body>
-<h1>Enter a message</h1>
-<form name="inputform">
-    <input type="text" name="message" id="message" placeholder="Enter text to be sent" autofocus>
-    <input type="submit" value="Send Web Socket Data">
-</form>
-<h2>Repsonse from Server</h2>
-<textarea readonly id="responseText"></textarea>
+<script>
+    var url = 'ws://localhost:8181';
+
+    $(document).ready(function () {
+        $("#loginForm").submit(function (e) {
+            e.preventDefault();
+            var login = $("#login").val();
+            Battleship.doLogin(url, login, function(playerId) {
+                $(".login").hide();
+                $(".userlist").show();
+            });
+        });
+    });
+</script>
+<h1>Battleship</h1>
+
+<div class="login">
+    <h3>Login:</h3>
+
+    <form id="loginForm">
+        <input type="text" id="login"/>
+        <input type="submit" value="Enter"/>
+    </form>
+</div>
+<div class="userlist" style="display: none;">
+    <h3>Игроки онлайн:</h3>
+</div>
 </body>
 </html>
