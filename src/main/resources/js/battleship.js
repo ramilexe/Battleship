@@ -6,6 +6,7 @@
     //protocol
     Battleship.LOGIN = 0x01;
     Battleship.LOGIN_SUCCESS = 0x02;
+    Battleship.ONLINE_LIST = 0x04;
 
     Battleship.doLogin = function (uri, name, onSuccess, onFail) {
         connect(uri, function() {
@@ -26,6 +27,14 @@
                     onFail();
                 }
             });
+        });
+    };
+
+    Battleship.getUserList = function() {
+        sendMessage(Battleship.ONLINE_LIST, {}, function(event) {
+            var data = event.data;
+            data = JSON.parse(data);
+            console.log(data);
         });
     };
 

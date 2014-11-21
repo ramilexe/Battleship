@@ -18,6 +18,8 @@
             Battleship.doLogin(url, login, function(playerId) {
                 $(".login").hide();
                 $(".userlist").show();
+
+                Battleship.getUserList();
             });
         });
     });

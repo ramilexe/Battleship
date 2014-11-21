@@ -28,6 +28,13 @@ public class WebSocketHandler extends SimpleChannelInboundHandler<Object> {
 
     private WebSocketServerHandshaker handshaker;
 
+    private Application app;
+
+    public WebSocketHandler() {
+        super();
+        app = Application.getInstance();
+    }
+
     @Override
     protected void messageReceived(ChannelHandlerContext ctx, Object msg) {
         if (msg instanceof FullHttpRequest) {
@@ -44,7 +51,8 @@ public class WebSocketHandler extends SimpleChannelInboundHandler<Object> {
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-        //ctx.channel().id()
+        System.out.println("Channel closed " + ctx.channel().id().asLongText());
+        app.removePlayer(ctx.channel());
     }
 
     private void handleWebSocketFrame(ChannelHandlerContext ctx, WebSocketFrame frame) {
@@ -77,9 +85,12 @@ public class WebSocketHandler extends SimpleChannelInboundHandler<Object> {
                 //create new player
                 Player player = new Player(l.login, ctx.channel());
                 //add to list
-                Application.getInstance().addPlayer(player);
+                app.addPlayer(ctx.channel(), player);
                 //answer
                 ctx.channel().writeAndFlush(Message.messageToFrame(MessageType.LOGIN_SUCCESS, player));
+            }
+            else if (m.type == MessageType.ONLINE_LIST) {
+                ctx.channel().writeAndFlush(Message.messageToFrame(MessageType.ONLINE_LIST, app.getPlayers()));
             }
 
         } catch (IOException e) {
